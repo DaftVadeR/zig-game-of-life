@@ -7,13 +7,66 @@ const sound_start_wav = @embedFile("./assets/sounds/shuffle.wav");
 const default_num_columns: u16 = 100;
 const default_num_rows: u16 = 100;
 
-const cell_size = 4;
+const cell_size = 8;
 
-const screenWidth = 600;
-const screenHeight = 600;
+const screen_width: i32 = 800;
+const screen_height: i32 = 800;
 
 // rows and columns dynamic.
-const Grid = struct { num_columns: u16, num_rows: u16 };
+const Grid = struct {
+    num_columns: u16,
+    num_rows: u16,
+    cells: []LinearCell,
+    alloc: std.mem.Allocator,
+
+    fn getCells(columns: u16, rows: u16, alloc: std.mem.Allocator) ![]LinearCell {
+        var cells: []LinearCell = try alloc.alloc(LinearCell, rows * columns);
+
+        const midway_rows = (rows / 2) - 2;
+        const midway_cols = (columns / 2) - 2;
+
+        var index: usize = 0;
+        var row: u32 = 0;
+
+        while (row < rows) {
+            var col: u32 = 0;
+
+            while (col < columns) {
+                // should fill a 9 by 9 grid mostly in the center?
+                if (row > midway_rows and
+                    col > midway_cols and
+                    row < midway_rows + 3 and
+                    col < midway_cols + 3)
+                {
+                    cells[index] = LinearCell{ .live = true };
+                } else {
+                    cells[index] = LinearCell{ .live = false };
+                }
+                col += 1;
+                index += 1;
+            }
+
+            row += 1;
+        }
+
+        return cells;
+    }
+
+    fn init(cols: u16, rows: u16, alloc: std.mem.Allocator) !*const Grid {
+        const cells = try getCells(cols, rows, alloc);
+
+        const grid = try alloc.create(Grid);
+
+        grid.* = Grid{ .num_columns = cols, .num_rows = rows, .alloc = alloc, .cells = cells };
+
+        return grid;
+    }
+
+    fn deinit(self: *const Grid) void {
+        self.alloc.free(self.cells);
+        self.alloc.destroy(self);
+    }
+};
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -23,8 +76,27 @@ pub fn main() !void {
     const alloc = gpa.allocator();
 
     const grid = try getGridFromSizeArgs(alloc);
+    defer grid.deinit();
 
-    rl.initWindow(screenWidth, screenHeight, "Game of life try");
+    // const flags = rl.ConfigFlags{ .window_topmost = true, .borderless_windowed_mode = true, .window_undecorated = true, .window_highdpi = false, .fullscreen_mode = true };
+    // rl.setConfigFlags(flags);
+
+    rl.initWindow(screen_width, screen_height, "Game of life try");
+    // rl.setWindowPosition(0, 0); // Force to top-left corner
+    // rl.setWindowMonitor(0); // Force to monitor 0 (primary)
+    // rl.toggleFullscreen();
+
+    // Fiddling to try figure out why screen height is 35px or so higher than explicitly provided values in initWindow call.
+    //
+    // rl.setWindowMaxSize(screen_width, screen_height);
+    // rl.setWindowSize(screen_width, screen_height);
+    //
+    // rl.setWindowTitle("");
+
+    // const flags = rl.ConfigFlags{ .fullscreen_mode = true, .borderless_windowed_mode = true, .window_maximized = true };
+    // rl.setWindowState(flags);
+    // rl.setConfigFlags(rl.ConfigFlags{})
+
     defer rl.closeWindow();
 
     rl.initAudioDevice();
@@ -43,7 +115,8 @@ pub fn main() !void {
         rl.beginDrawing();
         defer rl.endDrawing();
 
-        rl.clearBackground(rl.Color.white);
+        rl.clearBackground(rl.Color.dark_gray);
+        rl.drawRectangle(0, 0, screen_width, screen_height, rl.Color.red);
 
         // rl.drawTexture(image_table_tex, 0, 0, rl.Color.white);
 
@@ -51,29 +124,33 @@ pub fn main() !void {
 
         const mouse_click = rl.isMouseButtonPressed(rl.MouseButton.left);
 
-        const t = rl.getTime();
+        // const t = rl.getFrameTime();
 
         if (!started and mouse_click) {
             started = true;
 
             rl.playSound(sound_start);
         } else if (started) {
-            rl.drawRectangle(0, 0, grid.num_columns * cell_size, grid.num_rows * cell_size, rl.Color.black);
-
-            const s = try std.fmt.allocPrint(alloc, "Frame time elapsed {d}", .{t});
-
-            const null_term = try alloc.dupeZ(u8, s);
-
-            defer alloc.free(s);
-
-            defer alloc.free(null_term);
-
-            rl.drawText(null_term, 10, 50, 20, rl.Color.yellow.alpha(0.2));
+            drawUi();
+            drawGrid(grid);
         }
     }
 }
 
-fn getGridFromSizeArgs(alloc: std.mem.Allocator) !Grid {
+fn drawUi() void {
+    // rl.drawRectangle(0, 0, grid.num_columns * cell_size, grid.num_rows * cell_size, rl.Color.black);
+
+    // const s = try std.fmt.allocPrint(alloc, "Frame time {d}", .{t});
+    // defer alloc.free(s);
+
+    // const null_term = try alloc.dupeZ(u8, s);
+    // defer alloc.free(null_term);
+
+    // rl.drawText(null_term, 10, 50, 20, rl.Color.yellow.alpha(0.2));
+
+}
+
+fn getGridFromSizeArgs(alloc: std.mem.Allocator) !*const Grid {
     var args = try std.process.argsWithAllocator(alloc);
 
     defer args.deinit();
@@ -99,14 +176,53 @@ fn getGridFromSizeArgs(alloc: std.mem.Allocator) !Grid {
         i += 1;
     }
 
-    // we got rows, but no columns - just make it a square...
+    // we got columns, but no rows - just make it a square...
     if (i == 1) {
         rows = columns;
     }
 
     std.debug.print("Columns and rows -> {d} x {d}", .{ columns, rows });
 
-    return Grid{ .num_columns = columns, .num_rows = rows };
+    // Get cells
+    const grid = try Grid.init(columns, rows, alloc);
+
+    return grid;
+}
+
+const border_size: u8 = 1;
+
+fn drawGrid(grid: *const Grid) void {
+    var index: usize = 0;
+    var row: u32 = 0;
+
+    const finalSize: u8 = (cell_size - (border_size * 2));
+
+    while (row < grid.num_rows) {
+        const y: u32 = row * cell_size + border_size;
+
+        var col: u32 = 0;
+
+        while (col < grid.num_columns) {
+            const x: u32 = col * cell_size + border_size;
+
+            // std.debug.print("x: {}, y: {}, size: {}\n", .{ x, y, finalSize });
+            // std.debug.print("index: {} live: {}\n", .{ index, grid.cells[index].live });
+
+            const color: rl.Color = if (grid.cells[index].live) rl.Color.lime else rl.Color.gray;
+
+            // draw fill
+            // rl.drawRectangle(x, y, finalSize, finalSize, col);
+
+            // draw inside
+            rl.drawRectangle(@intCast(x), @intCast(y), @intCast(finalSize), @intCast(finalSize), color);
+
+            index += 1;
+            col += 1;
+        }
+
+        // std.debug.print("errr row? {}\n", .{row});
+        row += 1;
+    }
 }
 
 // Get (x,y) cell from grid with compacted byte bit flags.
