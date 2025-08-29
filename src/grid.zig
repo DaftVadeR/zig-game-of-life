@@ -131,17 +131,17 @@ pub const Grid = struct {
             const neighbours = self.getLiveCellNeighborCount(index);
 
             if (grid_cell.live) {
-                std.debug.print("\nLive cell checked: {d}", .{index});
+                // std.debug.print("\nLive cell checked: {d}", .{index});
 
                 if (neighbours <= 1) {
-                    std.debug.print("\nKilled - few/no neighbours", .{});
+                    // std.debug.print("\nKilled - few/no neighbours", .{});
                     cellsToUpdate[index].live = false;
                 } else if (neighbours >= 4) {
-                    std.debug.print("\nKilled - too many neighbours", .{});
+                    // std.debug.print("\nKilled - too many neighbours", .{});
                     cellsToUpdate[index].live = false;
                 }
             } else if (!grid_cell.live and neighbours == 3) {
-                std.debug.print("\nDead cell set to live - has 3 neighbours {d}", .{index});
+                // std.debug.print("\nDead cell set to live - has 3 neighbours {d}", .{index});
 
                 cellsToUpdate[index].live = true;
             }
@@ -196,8 +196,17 @@ pub const Grid = struct {
         return num_live;
     }
 
+    // Updates live cell data. Thus, cells are at the mercy of their sequence in the array. In my mind,
+    // this takes away from the whole notion of it mimicking life.
+    //
+    // I'm still not sure if I'm missing something here - will check other implementations and see.
+    // I don't know how I would have everything update at the same time without doing what I do in
+    // updateSnapshot(), only basing mutations off the cell data from the beginning of the frame,
+    // but that seems to always result in more death than life, and stalemate silos after a short period.
     pub fn updateSimple(self: *Grid) void {
-        applyRules(self.cells);
+        // std.debug.print("\nUpdate started - live count: {d}\n", .{countLiveTiles(self.cells)});
+        self.applyRules(self.cells);
+        // std.debug.print("\nUpdate done - new count: {d}\n", .{countLiveTiles(self.cells)});
     }
 
     fn countLiveTiles(cells: []cell.LinearCell) usize {
@@ -216,7 +225,7 @@ pub const Grid = struct {
     // for checks before switching out cell data with new slice.
     // Makes sure the cells update per frame, rather than the later cells having an unfair chronological advantage
     pub fn updateSnapshot(self: *Grid) !void {
-        std.debug.print("\nUpdate started - live count: {d}\n", .{countLiveTiles(self.cells)});
+        // std.debug.print("\nUpdate started - live count: {d}\n", .{countLiveTiles(self.cells)});
 
         const newCells = try self.alloc.dupe(cell.LinearCell, self.cells);
 
@@ -224,7 +233,7 @@ pub const Grid = struct {
 
         self.alloc.free(self.cells);
 
-        std.debug.print("\nUpdate done - new count: {d}\n", .{countLiveTiles(newCells)});
+        // std.debug.print("\nUpdate done - new count: {d}\n", .{countLiveTiles(newCells)});
 
         self.cells = newCells;
     }

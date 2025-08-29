@@ -12,7 +12,7 @@ const default_num_rows: u16 = 100;
 const screen_width: i32 = 800;
 const screen_height: i32 = 800;
 
-const num_start_cells: u16 = 500;
+const num_start_cells: u16 = 1000;
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -79,7 +79,8 @@ pub fn main() !void {
             drawUi();
             grid.drawGrid(cellGrid);
 
-            try cellGrid.updateSnapshot();
+            try cellGrid.updateSnapshot(); // update based on prior frame data.
+            // cellGrid.updateSimple(); // update off the same live cell data.
         }
 
         rl.drawRectangle(0, 0, 100, 40, rl.Color.black);
