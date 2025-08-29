@@ -1,18 +1,21 @@
 const std = @import("std");
 const rl = @import("raylib");
+
 // const rg = @import("raygui");
 
 const grid = @import("grid.zig");
 
 const sound_start_wav = @embedFile("./assets/sounds/shuffle.wav");
 
-const default_num_columns: u16 = 100;
-const default_num_rows: u16 = 100;
+const default_num_columns: u16 = 150;
+const default_num_rows: u16 = 150;
 
-const screen_width: i32 = 800;
-const screen_height: i32 = 800;
+const screen_width: i32 = 900;
+const screen_height: i32 = 900;
 
-const num_start_cells: u16 = 1000;
+const num_start_cells: u16 = 5000;
+
+const time_between_updates: f64 = 0.02; // separate it from frame rate speed.
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -27,7 +30,7 @@ pub fn main() !void {
     // const flags = rl.ConfigFlags{ .window_topmost = true, .borderless_windowed_mode = true, .window_undecorated = true, .window_highdpi = false, .fullscreen_mode = true };
     // rl.setConfigFlags(flags);
 
-    rl.initWindow(screen_width, screen_height, "Game of life try");
+    rl.initWindow(screen_width, screen_height - 37, "Game of life try");
 
     // rl.setWindowPosition(0, 0); // Force to top-left corner
     // rl.setWindowMonitor(0); // Force to monitor 0 (primary)
@@ -40,16 +43,16 @@ pub fn main() !void {
     //
     // rl.setWindowTitle("");
 
-    // const flags = rl.ConfigFlags{ .fullscreen_mode = true, .borderless_windowed_mode = true, .window_maximized = true };
+    // const flags = rl.ConfigFlags{ .borderless_windowed_mode = true };
     // rl.setWindowState(flags);
-    // rl.setConfigFlags(rl.ConfigFlags{})
+    // rl.setConfigFlags(flags);
 
     defer rl.closeWindow();
 
     rl.initAudioDevice();
     defer rl.closeAudioDevice();
 
-    rl.setTargetFPS(15);
+    rl.setTargetFPS(236);
 
     var started = false;
 
@@ -57,6 +60,8 @@ pub fn main() !void {
     const sound_start = rl.loadSoundFromWave(sound_start_wav_mem);
     defer rl.unloadSound(sound_start);
     defer rl.unloadWave(sound_start_wav_mem);
+
+    var elapsed_time: f32 = 0; // works as a rolling elapsed time, resetting once the update is done.
 
     while (!rl.windowShouldClose()) {
         rl.beginDrawing();
@@ -69,18 +74,22 @@ pub fn main() !void {
 
         const mouse_click = rl.isMouseButtonPressed(rl.MouseButton.left);
 
-        // const t = rl.getFrameTime();
-
         if (!started and mouse_click) {
             started = true;
 
             rl.playSound(sound_start);
         } else if (started) {
-            drawUi();
-            grid.drawGrid(cellGrid);
+            elapsed_time += rl.getFrameTime();
 
-            try cellGrid.updateSnapshot(); // update based on prior frame data.
-            // cellGrid.updateSimple(); // update off the same live cell data.
+            drawUi();
+            grid.drawGrid(cellGrid, screen_width, screen_height);
+
+            if (elapsed_time >= time_between_updates) { // only update every x seconds. Not ideal, but better than limiting framerate.
+                elapsed_time = 0;
+
+                try cellGrid.updateSnapshot(); // update based on prior frame data.
+                // cellGrid.updateSimple(); // update off the same live cell data.
+            }
         }
 
         rl.drawRectangle(0, 0, 100, 40, rl.Color.black);

@@ -2,10 +2,7 @@ const std = @import("std");
 const rl = @import("raylib");
 const cell = @import("cell.zig");
 
-const cell_size = 8;
 const border_size: u8 = 1;
-
-const start_num_live: u32 = 500;
 
 // rows and columns dynamic.
 pub const Grid = struct {
@@ -243,9 +240,13 @@ pub const Grid = struct {
     }
 };
 
-pub fn drawGrid(grid: *const Grid) void {
+pub fn drawGrid(grid: *const Grid, screen_width: u16, screen_height: u16) void {
     var index: usize = 0;
     var row: u32 = 0;
+
+    const cell_size: u8 = @intCast(@min(screen_width, screen_height) / grid.num_columns);
+
+    // const cell_size: u8 = try std.fmt.parseInt(u8, smallest_dimension, 10);
 
     const finalSize: u8 = (cell_size - (border_size * 2));
 
@@ -260,7 +261,7 @@ pub fn drawGrid(grid: *const Grid) void {
             // std.debug.print("x: {}, y: {}, size: {}\n", .{ x, y, finalSize });
             // std.debug.print("index: {} live: {}\n", .{ index, grid.cells[index].live });
 
-            const color: rl.Color = if (grid.cells[index].live) rl.Color.lime else rl.Color.gray;
+            const color: rl.Color = if (grid.cells[index].live) rl.Color.lime else rl.Color.light_gray;
 
             // draw fill
             // rl.drawRectangle(x, y, finalSize, finalSize, col);
