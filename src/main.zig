@@ -7,15 +7,15 @@ const grid = @import("grid.zig");
 
 const sound_start_wav = @embedFile("./assets/sounds/shuffle.wav");
 
-const default_num_columns: u16 = 150;
-const default_num_rows: u16 = 150;
+const default_num_columns: u8 = 150;
+const default_num_rows: u8 = 150;
 
 const screen_width: i32 = 900;
 const screen_height: i32 = 900;
 
-const num_start_cells: u16 = 5000;
+const num_start_cells: u16 = 3000;
 
-const time_between_updates: f64 = 0.02; // separate it from frame rate speed.
+const time_between_updates: f64 = 0.05; // separate it from frame rate speed.
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -24,7 +24,7 @@ pub fn main() !void {
 
     const alloc = gpa.allocator();
 
-    var cellGrid: *grid.Grid = try getGridFromSizeArgs(alloc);
+    var cellGrid = try getGridFromSizeArgs(alloc);
     defer cellGrid.deinit();
 
     // const flags = rl.ConfigFlags{ .window_topmost = true, .borderless_windowed_mode = true, .window_undecorated = true, .window_highdpi = false, .fullscreen_mode = true };
@@ -52,12 +52,13 @@ pub fn main() !void {
     rl.initAudioDevice();
     defer rl.closeAudioDevice();
 
-    rl.setTargetFPS(236);
+    rl.setTargetFPS(240);
 
     var started = false;
 
     const sound_start_wav_mem = try rl.loadWaveFromMemory(".wav", sound_start_wav);
     const sound_start = rl.loadSoundFromWave(sound_start_wav_mem);
+
     defer rl.unloadSound(sound_start);
     defer rl.unloadWave(sound_start_wav_mem);
 
@@ -81,7 +82,8 @@ pub fn main() !void {
         } else if (started) {
             elapsed_time += rl.getFrameTime();
 
-            drawUi();
+            // drawUi();
+
             grid.drawGrid(cellGrid, screen_width, screen_height);
 
             if (elapsed_time >= time_between_updates) { // only update every x seconds. Not ideal, but better than limiting framerate.
@@ -112,13 +114,13 @@ fn drawUi() void {
 
 }
 
-fn getGridFromSizeArgs(alloc: std.mem.Allocator) !*grid.Grid {
+fn getGridFromSizeArgs(alloc: std.mem.Allocator) !grid.Grid {
     var args = try std.process.argsWithAllocator(alloc);
 
     defer args.deinit();
 
-    var columns: u16 = default_num_columns;
-    var rows: u16 = default_num_rows;
+    var columns: u8 = default_num_columns;
+    var rows: u8 = default_num_rows;
 
     var i: u8 = 0;
 
@@ -128,11 +130,11 @@ fn getGridFromSizeArgs(alloc: std.mem.Allocator) !*grid.Grid {
         }
 
         if (i == 1) {
-            columns = try std.fmt.parseInt(u16, arg, 10);
+            columns = try std.fmt.parseInt(u8, arg, 10);
         }
 
         if (i == 2) {
-            rows = try std.fmt.parseInt(u16, arg, 10);
+            rows = try std.fmt.parseInt(u8, arg, 10);
         }
 
         i += 1;
