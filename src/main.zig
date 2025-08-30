@@ -3,7 +3,7 @@ const rl = @import("raylib");
 
 // const rg = @import("raygui");
 
-const grid = @import("grid-whitelist.zig");
+const grid = @import("grid.zig");
 const cell = @import("cell.zig");
 
 const sound_start_wav = @embedFile("./assets/sounds/shuffle.wav");
@@ -31,7 +31,8 @@ pub fn main() !void {
     // const flags = rl.ConfigFlags{ .window_topmost = true, .borderless_windowed_mode = true, .window_undecorated = true, .window_highdpi = false, .fullscreen_mode = true };
     // rl.setConfigFlags(flags);
 
-    rl.initWindow(screen_width, screen_height - 37, "Game of life try");
+    // Shows a 37px gap on Hyprland/Wayland at the bottom - not sure how to fix yet.
+    rl.initWindow(screen_width, screen_height, "Game of life try");
 
     // rl.setWindowPosition(0, 0); // Force to top-left corner
     // rl.setWindowMonitor(0); // Force to monitor 0 (primary)
@@ -76,7 +77,10 @@ pub fn main() !void {
 
         const mouse_click = rl.isMouseButtonPressed(rl.MouseButton.left);
 
-        if (!started and mouse_click) {
+        if (!started and !mouse_click) {
+            rl.drawRectangle(screen_width / 2 - 150, screen_height / 2, 300, 40, rl.Color.red);
+            rl.drawText("Click to start", screen_width / 2 - 150 + 80, screen_height / 2 + 10, 20, rl.Color.white);
+        } else if (!started and mouse_click) {
             started = true;
 
             rl.playSound(sound_start);
@@ -115,7 +119,7 @@ fn drawUi() void {
 
 }
 
-fn getGridFromSizeArgs(alloc: std.mem.Allocator) !grid.GridWhitelist {
+fn getGridFromSizeArgs(alloc: std.mem.Allocator) !grid.Grid {
     var args = try std.process.argsWithAllocator(alloc);
 
     defer args.deinit();
@@ -150,7 +154,7 @@ fn getGridFromSizeArgs(alloc: std.mem.Allocator) !grid.GridWhitelist {
 
     // Get cells
     const live_cells_start = try cell.generateRandomLiveCellsForGrid(alloc, num_start_cells, columns, rows);
-    const grid_cells = try grid.GridWhitelist.init(alloc, columns, rows, live_cells_start);
+    const grid_cells = try grid.Grid.init(alloc, columns, rows, live_cells_start);
 
     return grid_cells;
 }
