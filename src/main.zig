@@ -3,7 +3,8 @@ const rl = @import("raylib");
 
 // const rg = @import("raygui");
 
-const grid = @import("grid.zig");
+const grid = @import("grid-whitelist.zig");
+const cell = @import("cell.zig");
 
 const sound_start_wav = @embedFile("./assets/sounds/shuffle.wav");
 
@@ -114,7 +115,7 @@ fn drawUi() void {
 
 }
 
-fn getGridFromSizeArgs(alloc: std.mem.Allocator) !grid.Grid {
+fn getGridFromSizeArgs(alloc: std.mem.Allocator) !grid.GridWhitelist {
     var args = try std.process.argsWithAllocator(alloc);
 
     defer args.deinit();
@@ -148,8 +149,8 @@ fn getGridFromSizeArgs(alloc: std.mem.Allocator) !grid.Grid {
     std.debug.print("Columns and rows -> {d} x {d}", .{ columns, rows });
 
     // Get cells
-    const live_cells_start = try grid.Grid.getRandomLiveVals(alloc, num_start_cells, columns, rows);
-    const grid_cells = try grid.Grid.init(alloc, columns, rows, live_cells_start);
+    const live_cells_start = try cell.generateRandomLiveCellsForGrid(alloc, num_start_cells, columns, rows);
+    const grid_cells = try grid.GridWhitelist.init(alloc, columns, rows, live_cells_start);
 
     return grid_cells;
 }
